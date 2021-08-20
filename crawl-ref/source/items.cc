@@ -80,6 +80,7 @@
 #include "stash.h"
 #include "state.h"
 #include "state.h"
+#include "stepdown.h"
 #include "stringutil.h"
 #include "terrain.h"
 #include "throw.h"
@@ -945,7 +946,30 @@ void item_check()
 // Wands are only type-identified.
 static bool _id_floor_item(item_def &item)
 {
-    if (item.base_type == OBJ_BOOKS)
+    if (you.species == SP_SLIME) {
+        if (fully_identified(item))
+            return false;
+
+        // autopickup hack for previously-unknown items
+        if (item_needs_autopickup(item))
+            item.props["needs_autopickup"] = true;
+
+        if (is_artefact(item))
+        {
+            if (!(item.flags & ISFLAG_NOTED_ID))
+            {
+                item.flags |= ISFLAG_NOTED_ID;
+
+                // Make a note of it.
+                take_note(Note(NOTE_ID_ITEM, 0, 0, item.name(DESC_A),
+                    origin_desc(item)));
+            }
+        }
+
+        set_ident_flags(item, ISFLAG_IDENT_MASK);
+        return true;
+    }
+    else if (item.base_type == OBJ_BOOKS)
     {
         if (fully_identified(item))
             return false;
@@ -1320,6 +1344,7 @@ bool pickup_single_item(int link, int qty)
     ASSERT(link != NON_ITEM);
 
     item_def* item = &mitm[link];
+
     if (item_is_stationary(mitm[link]))
     {
         mpr("You can't pick that up.");
@@ -1828,6 +1853,7 @@ bool move_item_to_inv(int obj, int quant_got, bool quiet)
     bool actually_went_in = false;
     const bool keep_going = _put_item_in_inv(it, quant_got, quiet, actually_went_in);
 
+
     if ((it.base_type == OBJ_RUNES || item_is_orb(it) || in_bounds(old_item_pos))
         && actually_went_in)
     {
@@ -2187,6 +2213,108 @@ static int _place_item_in_free_slot(item_def &it, int quant_got, int &freeslot,
     return item.link;
 }
 
+static bool slime_slurp_item(item_def& item, int quant_got, bool quiet)
+{
+
+    // item_value() multiplies by quantity.
+    const int shop_value = item_value(item, true) / quant_got;
+
+    const int value = (item.base_type == OBJ_CORPSES ?
+        50 * stepdown_value(max(1,
+            max_corpse_chunks(item.mon_type)), 4, 4, 12, 12) : shop_value);
+
+    const int stepped = stepdown_value(value, 50, 50, 200, 250);
+    int item_value = div_rand_round(stepped, 50);
+
+    dprf("item_value : %d", item_value);
+    int food_cost = 10 * quant_got / (item.base_type == OBJ_MISSILES ?10:1);
+    int _inc_hp = 0;
+    int _inc_mp = 0;
+
+    bool can_pickup = false;
+    bool food_bonus = item.base_type == OBJ_CORPSES || item.base_type == OBJ_FOOD;
+    bool hp_bonus = item.base_type == OBJ_CORPSES 
+        || item.base_type == OBJ_FOOD
+        || item.base_type == OBJ_POTIONS;
+    bool mp_bonus = item.base_type == OBJ_WANDS || item.base_type == OBJ_SCROLLS;
+
+
+    switch (item.base_type) {
+    case OBJ_WEAPONS:
+    case OBJ_STAVES:
+    case OBJ_ARMOUR:
+    case OBJ_JEWELLERY:
+        //can equip
+        if (auto_equip(item, -1, true)) {
+            can_pickup = true;
+        }
+        break;
+    case OBJ_SCROLLS:
+    case OBJ_POTIONS:
+        //should pick up
+        if (is_useful_for_slime(item)) {
+            can_pickup = true;
+        }
+        break;
+    case OBJ_RUNES:
+    case OBJ_ORBS:
+    case OBJ_GOLD:
+    case OBJ_BOOKS:
+        //should pick up
+        can_pickup = true;
+        break;
+    case OBJ_MISCELLANY:
+        //this is not an item
+        //for only shop
+        if(item.sub_type == MISC_MERCENARY)
+            return true;
+        break;
+    case OBJ_MISSILES:
+    case OBJ_WANDS:
+    case OBJ_FOOD:
+    case OBJ_CORPSES:
+    case OBJ_RODS:
+    default:
+        break;
+    }
+
+
+
+    if (food_bonus) {
+        food_cost *= 5;
+    }
+
+    lessen_hunger(food_cost, true);
+
+    if(you.magic_points < you.max_magic_points 
+        && (mp_bonus ? true : one_chance_in(4)))
+    {
+        _inc_mp = max(random2(item_value), 1) * (mp_bonus?3:1);
+        inc_mp(_inc_mp);
+    }
+
+    if (you.hp < you.hp_max
+        && !you.duration[DUR_DEATHS_DOOR]
+        && (hp_bonus ?true:coinflip()))
+    {
+        _inc_hp = max(random2(item_value), 1) * (hp_bonus ? 2 : 1);
+        inc_hp(_inc_hp);
+    }
+
+    if (!quiet) {
+        //mprf(MSGCH_SOUND, "You hear a slurping noise.");
+        if (food_cost > 0)
+            mpr("You feel a little less hungry.");
+        if (_inc_hp > 0)
+            canned_msg(MSG_GAIN_HEALTH);
+        if (_inc_mp > 0)
+            canned_msg(MSG_GAIN_MAGIC);
+    }
+    return can_pickup;
+}
+
+
+
 /**
  * Move the given item and quantity to the player's inventory.
  * DOES NOT change the original item; the caller must handle any cleanup!
@@ -2208,6 +2336,12 @@ bool merge_items_into_inv(item_def &it, int quant_got,
     // sanity
     if (quant_got > it.quantity || quant_got <= 0)
         quant_got = it.quantity;
+
+    if (you.species == SP_SLIME) {
+        if (!slime_slurp_item(it, quant_got, quiet)) {
+            return true;
+        }
+    }
 
     // Gold has no mass, so we handle it first.
     if (it.base_type == OBJ_GOLD)
@@ -2263,6 +2397,10 @@ bool merge_items_into_inv(item_def &it, int quant_got,
         return false;
 
     inv_slot = _place_item_in_free_slot(it, quant_got, free_slot, quiet);
+
+    if (you.species == SP_SLIME) {
+       auto_equip(it, inv_slot, false);
+    }
     return true;
 }
 
@@ -2582,6 +2720,12 @@ bool drop_item(int item_dropped, int quant_drop)
     if (quant_drop < 0 || quant_drop > item.quantity)
         quant_drop = item.quantity;
 
+    if (you.species == SP_SLIME) {
+        mprf("This item cannot be drop because it melts into your body!");
+        return false;
+    }
+
+
     if (item_dropped == you.equip[EQ_LEFT_RING]
      || item_dropped == you.equip[EQ_RIGHT_RING]
      || item_dropped == you.equip[EQ_AMULET]
@@ -2718,6 +2862,13 @@ void drop_last()
         mpr("In this state, you cannot do this");
         return;
     }
+
+    if (you.species == SP_SLIME)
+    {
+        mpr("You cannot drop items in your body.");
+        return;
+    }
+
     vector<SelItem> items_to_drop;
 
     for (const auto &entry : you.last_pickup)
@@ -2844,6 +2995,11 @@ void drop()
     if (is_able_into_wall())
     {
         mpr("In this state, you cannot do this");
+        return;
+    }
+    if (you.species == SP_SLIME)
+    {
+        mpr("You cannot drop items in your body.");
         return;
     }
     if (inv_count() < 1 && you.gold == 0)

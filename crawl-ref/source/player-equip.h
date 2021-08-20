@@ -8,7 +8,7 @@
 
 // XXX: the msg flag isn't implemented in all cases.
 void equip_item(equipment_type slot, int item_slot, bool msg=true);
-bool unequip_item(equipment_type slot, bool msg=true);
+bool unequip_item(equipment_type slot, bool msg=true, bool check=false);
 bool meld_slot(equipment_type slot);
 bool unmeld_slot(equipment_type slot);
 
@@ -18,6 +18,6 @@ void lose_permafly_source();
 void equip_effect(equipment_type slot, int item_slot, bool unmeld, bool msg);
 void unequip_effect(equipment_type slot, int item_slot, bool meld, bool msg);
 
-bool unwield_item(bool showMsgs/* = true*/, equipment_type slot);
+bool unwield_item(bool showMsgs/* = true*/, equipment_type slot, bool check=false);
 
 bool acrobat_boost_active();

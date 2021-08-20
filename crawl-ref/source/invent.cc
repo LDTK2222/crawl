@@ -1822,6 +1822,12 @@ bool needs_handle_warning(const item_def &item, operation_types oper,
         }
     }
 
+    if (oper == OPER_TAKEOFF || oper == OPER_REMOVE) {
+        if (you.species == SP_SLIME) {
+            return true;
+        }
+    }
+
     if (oper == OPER_EVOKE && god_hates_item(item))
     {
         penance = true;

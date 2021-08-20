@@ -196,6 +196,13 @@ hydra6
 hydra7
 hydra8
 hydra9
+%sdir player/slimes
+%rim 0
+slime_creature SLIME
+slime_creature2
+slime_creature3
+slime_creature4
+slime_creature5
 %sdir player/base
 %end_ctg
 

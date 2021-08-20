@@ -73,7 +73,7 @@ void equip_item(equipment_type slot, int item_slot, bool msg)
 }
 
 // Clear an equipment slot (possibly melded).
-bool unequip_item(equipment_type slot, bool msg)
+bool unequip_item(equipment_type slot, bool msg, bool check)
 {
     ASSERT_RANGE(slot, EQ_FIRST_EQUIP, NUM_EQUIP);
     ASSERT(!you.melded[slot] || you.equip[slot] != -1);
@@ -83,6 +83,9 @@ bool unequip_item(equipment_type slot, bool msg)
         return false;
     else
     {
+        if (check)
+            return true;
+
         you.equip[slot] = -1;
 
         if (!you.melded[slot])
@@ -387,22 +390,34 @@ static void _unequip_invis()
     }
 }
 
-static void _unequip_fragile_artefact(item_def& item, bool meld)
-{
-    ASSERT(is_artefact(item));
 
+static bool _unequip_slime_melt(item_def& item, bool meld)
+{
+    if (you.species == SP_SLIME && !meld) {
+        mprf("%s melted into the body and disappeared!", item.name(DESC_THE).c_str());
+        dec_inv_item_quantity(item.link, 1);
+        return true;
+    }
+    return false;
+}
+
+static bool _unequip_fragile_artefact(item_def& item, bool meld)
+{
     if (artefact_property(item, ARTP_FRAGILE) && !meld)
     {
         mprf("%s crumbles to dust!", item.name(DESC_THE).c_str());
         dec_inv_item_quantity(item.link, 1);
+        return true;
     }
+    return false;
 }
 
-static void _unequip_artefact_effect(item_def &item,
+static bool _unequip_artefact_effect(item_def &item,
                                      bool *show_msgs, bool meld,
                                      equipment_type slot,
                                      bool weapon)
 {
+    bool exist_ = true;
     ASSERT(is_artefact(item));
 
     artefact_properties_t proprt;
@@ -471,8 +486,11 @@ static void _unequip_artefact_effect(item_def &item,
 
     // If the item is a weapon, then we call it from unequip_weapon_effect
     // separately, to make sure the message order makes sense.
-    if (!weapon)
-        _unequip_fragile_artefact(item, meld);
+    if (!weapon) {
+        if (_unequip_fragile_artefact(item, meld)) {
+            exist_ = false;
+        }
+    }
 
     // Unwielding dismisses an active spectral weapon
     monster *spectral_weapon = find_spectral_weapon(&you);
@@ -482,6 +500,8 @@ static void _unequip_artefact_effect(item_def &item,
              meld ? "your weapon melds" : "you unwield");
         end_spectral_weapon(spectral_weapon, false, true);
     }
+
+    return exist_;
 }
 
 static void _equip_use_warning(const item_def& item)
@@ -905,8 +925,10 @@ static void _unequip_weapon_effect(item_def& real_item, bool showMsgs, bool meld
         canned_msg(MSG_MANA_DECREASE);
     }
 
-    if (is_artefact(item))
-        _unequip_fragile_artefact(item, meld);
+    if (!_unequip_slime_melt(item, meld)) {
+        if (is_artefact(item))
+            _unequip_fragile_artefact(item, meld);
+    }
 
 }
 
@@ -1261,8 +1283,13 @@ static void _unequip_armour_effect(item_def& item, bool meld,
         break;
     }
 
-    if (is_artefact(item))
-        _unequip_artefact_effect(item, nullptr, meld, slot, false);
+    bool exist = true;
+    if (is_artefact(item)) {
+        exist = _unequip_artefact_effect(item, nullptr, meld, slot, false);
+    }
+    if(exist) {
+        _unequip_slime_melt(item, meld);
+    }
 }
 
 static void _remove_amulet_of_faith(item_def &item)
@@ -1615,14 +1642,19 @@ static void _unequip_jewellery_effect(item_def &item, bool mesg, bool meld,
         break;
     }
 
-    if (is_artefact(item))
-        _unequip_artefact_effect(item, &mesg, meld, slot, false);
+    bool exist = true;
+    if (is_artefact(item)) {
+        exist = _unequip_artefact_effect(item, &mesg, meld, slot, false);
+    }
+    if (exist) {
+        _unequip_slime_melt(item, meld);
+    }
 
     // Must occur after ring is removed. -- bwr
     calc_mp();
 }
 
-bool unwield_item(bool showMsgs, equipment_type slot)
+bool unwield_item(bool showMsgs, equipment_type slot, bool check)
 {
     if ((slot == EQ_WEAPON && !you.weapon()) ||
         (slot == EQ_SECOND_WEAPON && !you.second_weapon()) 
@@ -1635,6 +1667,10 @@ bool unwield_item(bool showMsgs, equipment_type slot)
 
     if (is_weapon && !safe_to_remove(item))
         return false;
+
+    if (check) {
+        return true;
+    }
 
     unequip_item(slot, showMsgs);
     if(have_passive(passive_t::imus_bounce_wall)) {

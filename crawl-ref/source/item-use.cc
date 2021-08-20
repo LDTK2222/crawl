@@ -2353,19 +2353,21 @@ static equipment_type _choose_amulet_slot()
 // Is it possible to put on the given item in a jewellery slot?
 // Preconditions:
 // - item is not already equipped in a jewellery slot
-static bool _can_puton_jewellery(const item_def &item)
+static bool _can_puton_jewellery(const item_def &item, bool slient = false, bool for_slime = false)
 {
     // TODO: between this function, _puton_item, _swap_jewellerys, and remove_ring,
     // there's a bit of duplicated work, and sep. of concerns not clear
     if (&item == you.weapon())
     {
-        mpr("You are wielding that object.");
+        if(!slient)
+            mpr("You are wielding that object.");
         return false;
     }
 
     if (item.base_type != OBJ_JEWELLERY)
     {
-        mpr("You can only put on jewellery.");
+        if (!slient)
+            mpr("You can only put on jewellery.");
         return false;
     }
     
@@ -2374,14 +2376,16 @@ static bool _can_puton_jewellery(const item_def &item)
     if (!is_amulet && !player_equip_unrand(UNRAND_FINGER_AMULET)
         && you.species == SP_HYDRA)
     {
-        mpr("You have no fingers and your toes are too big to put on.");
+        if (!slient)
+            mpr("You have no fingers and your toes are too big to put on.");
         return false;
     }
 
     if (is_amulet && !you_can_wear(EQ_AMULETS, true)
         || !is_amulet && !you_can_wear(EQ_RINGS, true))
     {
-        mpr("You can't wear that in your present form.");
+        if (!slient)
+            mpr("You can't wear that in your present form.");
         return false;
     }
 
@@ -2400,27 +2404,32 @@ static bool _can_puton_jewellery(const item_def &item)
                     continue;
                 }
                 int existing = you.equip[eq];
-                if (existing != -1 && you.inv[existing].cursed())
+                if (existing != -1 && you.inv[existing].cursed() && !for_slime)
                     cursed++;
                 else
                     // We found an available slot. We're done.
                     return true;
             }
-            if (melded == (int)slots.size())
-                mpr("You can't wear that in your present form.");
-            else
-                mprf("You're already wearing %s cursed amulet%s!%s",
-                    number_in_words(cursed).c_str(),
-                    (cursed == 1 ? "" : "s"),
-                    (cursed > 2 ? " Isn't that enough for you?" : ""));
+
+            if (!slient)
+            {
+                if (melded == (int)slots.size())
+                    mpr("You can't wear that in your present form.");
+                else
+                    mprf("You're already wearing %s cursed amulet%s!%s",
+                        number_in_words(cursed).c_str(),
+                        (cursed == 1 ? "" : "s"),
+                        (cursed > 2 ? " Isn't that enough for you?" : ""));
+            }
             return false;
         }
         else {
             int existing = you.equip[EQ_AMULET];
-            if (existing != -1 && you.inv[existing].cursed())
+            if (existing != -1 && you.inv[existing].cursed() && !for_slime)
             {
-                mprf("%s is stuck to you!",
-                    you.inv[existing].name(DESC_YOUR).c_str());
+                if (!slient)
+                    mprf("%s is stuck to you!",
+                        you.inv[existing].name(DESC_YOUR).c_str());
                 return false;
             }
             else
@@ -2441,20 +2450,24 @@ static bool _can_puton_jewellery(const item_def &item)
                 continue;
             }
             int existing = you.equip[eq];
-            if (existing != -1 && you.inv[existing].cursed())
+            if (existing != -1 && you.inv[existing].cursed() && !for_slime)
                 cursed++;
             else
                 // We found an available slot. We're done.
                 return true;
         }
         // If we got this far, there are no available slots.
-        if (melded == (int)slots.size())
-            mpr("You can't wear that in your present form.");
-        else
-            mprf("You're already wearing %s cursed ring%s!%s",
-                 number_in_words(cursed).c_str(),
-                 (cursed == 1 ? "" : "s"),
-                 (cursed > 2 ? " Isn't that enough for you?" : ""));
+
+        if (!slient)
+        {
+            if (melded == (int)slots.size())
+                mpr("You can't wear that in your present form.");
+            else
+                mprf("You're already wearing %s cursed ring%s!%s",
+                    number_in_words(cursed).c_str(),
+                    (cursed == 1 ? "" : "s"),
+                    (cursed > 2 ? " Isn't that enough for you?" : ""));
+        }
         return false;
     }
 }
@@ -2654,6 +2667,213 @@ static bool _puton_item(const item_def& item, bool prompt_slot,
 
     return true;
 }
+
+
+bool is_useful_for_slime(const item_def& item) {
+    if (item.base_type == OBJ_SCROLLS) {
+
+        switch (item.sub_type) {
+        case SCR_TELEPORTATION:
+        case SCR_FEAR:
+        case SCR_SUMMONING:
+        case SCR_TORMENT:
+        case SCR_IMMOLATION:
+        case SCR_BLINKING:
+        case SCR_MAGIC_MAPPING:
+        case SCR_FOG:
+        case SCR_ACQUIREMENT:
+        case SCR_HOLY_WORD:
+        case SCR_VULNERABILITY:
+        case SCR_SILENCE:
+        case SCR_AMNESIA:
+        case SCR_COLLECTION:
+        case SCR_WISH:
+            return true;
+        }
+        return false;
+    }
+    else if (item.base_type == OBJ_POTIONS) {
+
+        switch (item.sub_type) {
+        case POT_CURING:
+        case POT_HEAL_WOUNDS:
+        case POT_HASTE:
+        case POT_MIGHT:
+        case POT_BRILLIANCE:
+        case POT_AGILITY:
+        case POT_GAIN_STRENGTH:
+        case POT_GAIN_DEXTERITY:
+        case POT_GAIN_INTELLIGENCE:
+        case POT_FLIGHT:
+        case POT_CANCELLATION:
+        case POT_AMBROSIA:
+        case POT_INVISIBILITY:
+        case POT_EXPERIENCE:
+        case POT_MAGIC:
+        case POT_RESTORE_ABILITIES:
+        case POT_BERSERK_RAGE:
+        case POT_CURE_MUTATION:
+        case POT_MUTATION:
+        case POT_RESISTANCE:
+        case POT_LIGNIFY:
+        case POT_UNSTABLE_MUTATION:
+        case POT_SWIFT:
+        case POT_REGENERATION:
+        case POT_ICY_ARMOUR:
+        case POT_TOXIC:
+        case POT_SHROUD:
+        case POT_REPEL_MISSILES:
+        case POT_DEFLECT_MISSILES:
+        case POT_ICY_SHIELD:
+        case POT_NIGREDO:
+        case POT_ALBEDO:
+        case POT_CITRINITAS:
+        case POT_VIRIDITAS:
+        case POT_RUBEDO:
+        case POT_ATTRACTION:
+            return true;
+        case POT_POISON:
+        case POT_STRONG_POISON:
+            if (you_worship(GOD_AGRAPHEDE)) {
+                return true;
+            }
+            break;
+        }
+    }
+    return false;
+}
+
+//only for slime
+bool auto_equip(const item_def& to_puton, int inv_slot, bool check) {
+    ASSERT(you.species == SP_SLIME);
+    if (can_wield(&to_puton, false, true) && is_melee_weapon(to_puton)) {
+        const item_def* wpn = you.weapon();
+
+        if (wpn)
+        {
+            if (!unwield_item(true, EQ_WEAPON, check))
+                return false;
+        }
+
+        if (is_shield_incompatible(to_puton) && you.equip[EQ_SHIELD] != -1)
+        {
+            if (!unequip_item(EQ_SHIELD, true, check)) {
+                return false;
+            }
+        }
+
+        if (check)
+            return true;
+
+        equip_item(EQ_WEAPON, inv_slot);
+        return true;
+    }
+    else if (can_wear_armour(to_puton, false, true))
+    {
+        const equipment_type slot = get_armour_slot(to_puton);
+        if ((slot == EQ_CLOAK
+            || slot == EQ_HELMET
+            || slot == EQ_GLOVES
+            || slot == EQ_BOOTS
+            || slot == EQ_SHIELD
+            || slot == EQ_BODY_ARMOUR)
+            && you.equip[slot] != -1)
+        {
+            if (!unequip_item(slot, true, check))
+                return false;
+        }
+
+        if (slot == EQ_SHIELD
+            && you.equip[EQ_WEAPON] != -1
+            && you.slot_item(EQ_WEAPON, true)
+            && is_shield_incompatible(*you.slot_item(EQ_WEAPON, true)))
+        {
+            if (you.slot_item(EQ_WEAPON) == nullptr) {
+                //cannot unwield melding weapon
+                return false;
+            }
+            if (!unwield_item(true, EQ_WEAPON, check))
+                return false;
+        }
+
+        if (check)
+            return true;
+
+        equip_item(slot, inv_slot);
+        return true;
+    }
+    else if (_can_puton_jewellery(to_puton, true, true))
+    {
+        const bool is_amulet = jewellery_is_amulet(to_puton);
+
+        const vector<equipment_type> ring_types = _current_ring_types();
+        const vector<equipment_type> amulet_types = _current_amulet_types();
+
+        if (!is_amulet)     // i.e. it's a ring
+        {
+            // Check whether there are any unused ring slots
+            for (auto eq : ring_types)
+            {
+                if (!you.slot_item(eq, true))
+                {
+                    if (check)
+                        return true;
+                    equip_item(eq, inv_slot);
+                    return true;
+                }
+            }
+
+            if (check)
+                return true;
+
+            equipment_type hand_used = EQ_NONE;
+            do
+            {
+                hand_used = _choose_ring_slot();
+                if (hand_used == EQ_NONE && yesno("Really abort (and waste the ring)?", false, 0)) {
+                    return false;
+                }
+
+            } while (hand_used == EQ_NONE);
+
+            // Allow swapping out a ring.
+            if (you.slot_item(hand_used, true))
+            {
+                if (!unequip_item(hand_used))
+                    return false;
+
+                equip_item(hand_used, inv_slot);
+
+                return true;
+            }
+            return false;
+        }
+        else
+        {
+            if (is_unrandom_artefact(*you.slot_item(EQ_AMULET, true), UNRAND_FINGER_AMULET)
+                && you.equip[EQ_RING_AMULET] != -1)
+            {
+                if (!unequip_item(EQ_AMULET, true, check))
+                    return false;
+            }
+
+            if (you.equip[EQ_AMULET] != -1)
+            {
+                if (!unequip_item(EQ_AMULET, true, check))
+                    return false;
+            }
+            if (check)
+                return true;
+            equip_item(EQ_AMULET, inv_slot);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+
 
 // Put on a ring or amulet. (Most of the work is in _puton_item.)
 bool puton_ring(const item_def &to_puton, bool allow_prompt,

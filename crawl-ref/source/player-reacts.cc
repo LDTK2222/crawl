@@ -1013,6 +1013,21 @@ static void _rot_ghoul_players()
     }
 }
 
+static void _rot_slime_players() {
+    if (you.species != SP_SLIME)
+        return;
+
+    if (you.hunger_state < HS_HUNGRY) {
+        int resilience = 100;
+        if (one_chance_in(resilience))
+        {
+            dprf("rot rate: 1/%d", resilience);
+            mprf(MSGCH_WARN, "You feel your blob rotting away.");
+            rot_hp(1);
+        }
+    }
+}
+
 static void _handle_emergency_flight()
 {
     ASSERT(you.props[EMERGENCY_FLIGHT_KEY].get_bool());
@@ -1226,6 +1241,7 @@ void player_reacts()
 
     _decrement_durations();
     _rot_ghoul_players();
+    _rot_slime_players();
 
     // Translocations and possibly other duration decrements can
     // escape a player from beholders and fearmongers. These should

@@ -137,7 +137,9 @@ void give_job_equipment(job_type job)
                           plus, spec.ego);
     }
 
-    newgame_make_item(OBJ_MISCELLANY, MISC_BAG);
+    if (you.species != SP_SLIME) {
+        newgame_make_item(OBJ_MISCELLANY, MISC_BAG);
+    }
 }
 
 // Must be called after equipment is given for weapon skill to be given.

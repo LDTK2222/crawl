@@ -28,6 +28,10 @@ bool god_hates_brand(const int brand);
 
 bool safe_to_remove(const item_def &item, bool quiet = false);
 
+bool is_useful_for_slime(const item_def& item);
+
+bool auto_equip(const item_def& to_puton, int inv_slot, bool check);
+
 bool puton_ring(int slot = -1, bool allow_prompt = true,
                 bool check_for_inscriptions = true);
 
@@ -61,6 +65,7 @@ bool item_is_worn(int inv_slot);
 bool enchant_weapon(item_def &wpn, bool quiet);
 bool enchant_armour(int &ac_change, bool quiet, item_def &arm);
 void random_uselessness();
+
 
 void prompt_inscribe_item();
 vector<equipment_type> current_jewellery_types();

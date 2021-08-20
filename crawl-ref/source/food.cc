@@ -463,8 +463,10 @@ int prompt_eat_chunks(bool only_auto)
             // Allow undead to use easy_eat, but not auto_eat, since the player
             // might not want to drink blood as a vampire and might want to save
             // chunks as a ghoul. Ghouls can auto_eat if they have rotted hp.
-            const bool no_auto = you.undead_state()
-                && !(you.species == SP_GHOUL && player_rotted());
+            // and slime can't carry food
+            const bool no_auto = (you.undead_state()
+                && !(you.species == SP_GHOUL && player_rotted()))
+                || you.species == SP_SLIME;
 
             // If this chunk is safe to eat, just do so without prompting.
             if (easy_eat && !bad && i_feel_safe() && !(only_auto && no_auto))
@@ -911,6 +913,10 @@ int you_min_hunger()
 
     // Vampires can never starve to death. Ghouls will just rot much faster.
     if (you.undead_state() != US_ALIVE)
+        return (HUNGER_FAINTING + HUNGER_STARVING) / 2; // midpoint
+
+    // Slimes can never starve to death too. Slimes also will rot.
+    if (you.species == SP_SLIME)
         return (HUNGER_FAINTING + HUNGER_STARVING) / 2; // midpoint
 
     return 0;

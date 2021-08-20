@@ -1,0 +1,57 @@
+enum: SP_SLIME
+monster: MONS_SLIME_CREATURE
+name: Slime
+difficulty: Advanced
+difficulty_priority: 130
+aptitudes:
+  xp: -2
+  hp: 1
+  mp_mod: -1
+  mr: 4
+  fighting: 1
+  short_blades: 0
+  long_blades: 0
+  axes: 0
+  maces_and_flails: 0
+  polearms: 0
+  staves: 0
+  slings: false
+  bows: false
+  crossbows: false
+  throwing: false
+  armour: -1
+  dodging: -1
+  stealth: 3
+  shields: -1
+  unarmed_combat: 2
+  spellcasting: -2
+  conjurations: -1
+  hexes: -1
+  charms: -1
+  summoning: -1
+  necromancy: -1
+  translocations: -1
+  transmutations: 1
+  fire_magic: -1
+  ice_magic: -1
+  air_magic: -1
+  earth_magic: -1
+  poison_magic: 1
+  invocations: -1
+  evocations: -1
+str: 9
+int: 9
+dex: 6
+levelup_stat_frequency: 4
+mutations:
+  1:
+    MUT_ACID_RESISTANCE: 1
+fake_mutations:
+  - long: "You can't pick up items. You can eat items instead."
+recommended_jobs:
+  - JOB_FIGHTER
+  - JOB_WEAPON_MASTER
+  - JOB_BERSERKER
+  - JOB_SKALD
+  - JOB_SUMMONER
+  - JOB_ICE_ELEMENTALIST

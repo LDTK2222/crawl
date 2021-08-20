@@ -4185,6 +4185,8 @@ static tileidx_t _tileidx_player_species_base(const species_type species)
             return TILEG_SP_SPARKBORN;
         case SP_AUTOMATON:
             return TILEG_SP_AUTOMATON;
+        case SP_SLIME:
+            return TILEG_SP_SLIME;
         default:
             return TILEP_ERROR;
     }

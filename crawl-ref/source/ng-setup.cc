@@ -202,6 +202,9 @@ item_def* newgame_make_item(object_class_type base,
 
 static void _give_ranged_weapon(weapon_type weapon, int plus)
 {
+    if (you.species == SP_SLIME)
+        return;
+
     ASSERT(weapon != NUM_WEAPONS);
 
     switch (weapon)
@@ -218,6 +221,9 @@ static void _give_ranged_weapon(weapon_type weapon, int plus)
 
 static void _give_ammo(weapon_type weapon, int plus)
 {
+    if (you.species == SP_SLIME)
+        return;
+
     ASSERT(weapon != NUM_WEAPONS);
 
     switch (weapon)
@@ -402,6 +408,9 @@ static void _give_starting_food()
 {
     // No food for those who don't need it.
     if (you_foodless())
+        return;
+
+    if (you.species == SP_SLIME)
         return;
 
     object_class_type base_type = OBJ_FOOD;

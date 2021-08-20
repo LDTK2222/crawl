@@ -243,6 +243,7 @@ WM JOB_WEAPON_MASTER
 %sdir player
 %texture none
 felids/cat3 SP_RECOMMENDED_FELID
+slimes/slime_creature SP_RECOMMENDED_SLIME
 %start
 %compose base/palentonga_red_f
 %compose body/animal_skin
@@ -438,6 +439,7 @@ base/octopode1 SP_RECOMMENDED_OCTOPODE
 %sdir gui/backgrounds
 %texture disabled-fg
 enum:SP_RECOMMENDED_FELID SP_FELID
+enum:SP_RECOMMENDED_SLIME SP_SLIME
 enum:SP_RECOMMENDED_PALENTONGA SP_PALENTONGA
 enum:SP_RECOMMENDED_CENTAUR SP_CENTAUR
 enum:SP_RECOMMENDED_DEEP_DWARF SP_DEEP_DWARF
